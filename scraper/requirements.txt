@@ -1,0 +1,3 @@
+autorootcwd
+telethon
+rich

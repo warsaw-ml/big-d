@@ -1,0 +1,17 @@
+# one-person channels for signals/announcements/journaling/etc.
+channels:
+  SolsticeMoonshots: "SolsticeMoonshots"
+  SolsticeGambles: "solsticegambles"
+  ZulQ: 1734671709
+
+# multi-person conversations
+group_chats:
+  PrintGains: 1854179726
+  BasedBoys: 1862898215
+  TheForest: 1537425848
+  CryptoMuppets: 1557320967
+  
+# forums are basically groups of chats
+forums:
+  10IQCapital: 1834229782
+  FloppingBlue: 1849376414
