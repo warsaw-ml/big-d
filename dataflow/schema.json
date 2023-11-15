@@ -1,12 +1,18 @@
-[
-    {"name": "text", "type": "STRING"},
-    {"name": "username", "type": "STRING"},
-    {"name": "first_name", "type": "STRING"},
-    {"name": "last_name", "type": "STRING"},
-    {"name": "user_id", "type": "STRING"},
-    {"name": "is_bot", "type": "BOOLEAN"},
-    {"name": "channel_name", "type": "STRING"},
-    {"name": "channel_id", "type": "STRING"},
-    {"name": "timestamp", "type": "TIMESTAMP"}
-  ]
-  
+{
+  "id": "big-d-project-404815:telegram.chatroom",
+  "kind": "bigquery#table",
+  "numRows": "0",
+  "schema": {
+    "fields": [
+      {"mode": "NULLABLE", "name": "text", "type": "STRING"},
+      {"mode": "NULLABLE", "name": "username", "type": "STRING"},
+      {"mode": "NULLABLE", "name": "first_name", "type": "STRING"},
+      {"mode": "NULLABLE", "name": "last_name", "type": "STRING"},
+      {"mode": "NULLABLE", "name": "user_id", "type": "STRING"},
+      {"mode": "NULLABLE", "name": "is_bot", "type": "BOOLEAN"},
+      {"mode": "NULLABLE", "name": "channel_name", "type": "STRING"},
+      {"mode": "NULLABLE", "name": "channel_id", "type": "STRING"},
+      {"mode": "NULLABLE", "name": "timestamp", "type": "TIMESTAMP"}
+    ]
+  }
+}
