@@ -63,10 +63,11 @@ class WriteToGCS(DoFn):
 class ProcessPubsubMessage(DoFn):
     def process(self, element):
         try:
-            data = eval(element) if isinstance(element, str) else element.data
+            data = json.loads(element)
             yield data
         except Exception as e:
             print(f"Error processing message: {e}")
+
 
 def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=5, pipeline_args=None):
     pipeline_options = PipelineOptions(pipeline_args, streaming=True, save_main_session=True)
@@ -76,6 +77,7 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=5,
             pipeline
             | "Read from Pub/Sub" >> beam.io.ReadFromPubSub(topic=input_topic)
         )
+    
         gcs_output = (
                     messages
                     | "Window into" >> GroupMessagesByFixedWindows(window_size, num_shards)
