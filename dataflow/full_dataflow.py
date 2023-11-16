@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import random
 
+from vertexai.language_models import TextEmbeddingModel
 import apache_beam as beam
 from apache_beam import DoFn, GroupByKey, ParDo, Pipeline, PTransform, WindowInto, WithKeys
 from apache_beam.io import WriteToBigQuery
@@ -14,6 +15,8 @@ TOPIC_NAME = 'telegram-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
 BIGQUERY_DATASET = 'telegram'
 BIGQUERY_TABLE = 'chatroom'
+LOCATION = 'europe-central2'
+EMBEDDING_MODEL = 'textembedding-gecko@001'
 
 
 def get_bigquery_schema(schema_path):
@@ -41,7 +44,7 @@ class GroupMessagesByFixedWindows(PTransform):
 class AddTimestamp(DoFn):
     def process(self, element, publish_time=DoFn.TimestampParam):
         yield (
-            element.decode("utf-8"),
+            element,
             datetime.utcfromtimestamp(float(publish_time)).strftime("%Y-%m-%d %H:%M:%S.%f"),
         )
 
@@ -61,21 +64,39 @@ class WriteToGCS(DoFn):
                 f.write(f"{message_body},{publish_time}\n".encode())
 
 class ProcessPubsubMessage(DoFn):
+    
+    def __init__(self):
+        self.model = TextEmbeddingModel.from_pretrained("textembedding-gecko@001")
+
     def process(self, element):
         try:
             data = json.loads(element)
+            text_to_embed = data.get('text', '')
+            embedding = self.get_embedding(text_to_embed)
+            data['embedding'] = embedding
             yield data
         except Exception as e:
             print(f"Error processing message: {e}")
 
+    def get_embedding(self, text):
+            embeddings = self.model.get_embeddings([text])
+            for embedding in embeddings:
+                vector = embedding.values
+            return vector
 
 def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=5, pipeline_args=None):
     pipeline_options = PipelineOptions(pipeline_args, streaming=True, save_main_session=True)
 
     with Pipeline(options=pipeline_options) as pipeline:
+
+        process_pubsub = ProcessPubsubMessage()
+
         messages = (
             pipeline
-            | "Read from Pub/Sub" >> beam.io.ReadFromPubSub(topic=input_topic)
+            | "Read from PubSub" >> beam.io.ReadFromPubSub(topic=input_topic)
+            | "Decode PubSub message" >> beam.Map(lambda x: x.decode("utf-8"))
+            | "Process message" >> beam.ParDo(process_pubsub)
+            | "Filter out invalid message" >> beam.Filter(lambda x: x is not None)
         )
     
         gcs_output = (
@@ -86,8 +107,6 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=5,
 
         bq_output = (
             messages
-            | "Process messages" >> beam.ParDo(ProcessPubsubMessage())
-            | "Filter out invalid messages" >> beam.Filter(lambda x: x is not None)
             | "Write to BigQuery" >> WriteToBigQuery(
                 f'{PROJECT_ID}:{BIGQUERY_DATASET}.{bigquery_table}',
                 schema=schema,
@@ -98,6 +117,7 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=5,
         )
 
 if __name__ == "__main__":
+
     logging.getLogger().setLevel(logging.INFO)
 
     parser = argparse.ArgumentParser()

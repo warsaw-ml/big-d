@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-WINDOW_SIZE = 2
+WINDOW_SIZE = 1
 RUNNER = 'DataflowRunner'
 PROJECT_ID = 'big-d-project-404815'
 REGION = 'europe-central2'
