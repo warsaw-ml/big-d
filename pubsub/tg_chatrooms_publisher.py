@@ -4,6 +4,7 @@ import os
 import autorootcwd
 import yaml
 from google.cloud import pubsub_v1
+from google.oauth2 import service_account
 from rich import print
 from telethon import events
 from telethon.sync import TelegramClient
@@ -11,7 +12,8 @@ from telethon.sync import TelegramClient
 PROJECT_ID = "big-d-project-404815"
 TOPIC_NAME = "telegram-topic"
 topic_path = f"projects/{PROJECT_ID}/topics/{TOPIC_NAME}"
-publisher = pubsub_v1.PublisherClient()
+credentials = service_account.Credentials.from_service_account_file("data/big-d-project-404815-44996acd710d.json")
+publisher = pubsub_v1.PublisherClient(credentials=credentials)
 
 with open("data/tg_chatrooms.yaml") as f:
     tg_chatrooms = yaml.load(f, Loader=yaml.FullLoader)
@@ -26,8 +28,7 @@ def publish_message(data):
     data = json.dumps(data).encode("utf-8")
     future = publisher.publish(topic_path, data=data)
     print(f"Published message: {data}")
-    # print error if any
-    future.result()
+    future.result()  # print error if any
 
 
 @client.on(events.NewMessage(chats=ids, incoming=True))
@@ -58,7 +59,7 @@ async def handler(event):
         "timestamp": timestamp,
     }
 
-    print(data)
+    # print(data)
 
     # Publish data to Pub/Sub
     publish_message(data)
