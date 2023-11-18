@@ -1,13 +1,13 @@
 {
+    "message_id": "1234567890",
     "text": "How are you?",
-    "username": "jane_smith",
-    "first_name": "Jane",
-    "last_name": "Smith",
-    "user_id": "789012",
+    "username": "john_doe",
+    "first_name": "John",
+    "last_name": "Doe",
+    "user_id": "73412",
     "is_bot": "true",
     "channel_name": "random",
     "channel_id": "345678",
     "timestamp": "2023-11-12T13:45:23.456Z"
 }
-
 

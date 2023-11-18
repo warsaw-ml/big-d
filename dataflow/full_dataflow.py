@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import random
 
+# from google.cloud import airplatform
 from vertexai.language_models import TextEmbeddingModel
 import apache_beam as beam
 from apache_beam import DoFn, GroupByKey, ParDo, Pipeline, PTransform, WindowInto, WithKeys
@@ -14,7 +15,7 @@ PROJECT_ID = 'big-d-project-404815'
 TOPIC_NAME = 'telegram-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
 BIGQUERY_DATASET = 'telegram'
-BIGQUERY_TABLE = 'chatroom'
+BIGQUERY_TABLE = 'chatrooms'
 LOCATION = 'europe-central2'
 EMBEDDING_MODEL = 'textembedding-gecko@001'
 
@@ -28,7 +29,7 @@ schema = get_bigquery_schema('schema.json')
 
 
 class GroupMessagesByFixedWindows(PTransform):
-    def __init__(self, window_size, num_shards=5):
+    def __init__(self, window_size, num_shards=3):
         self.window_size = int(window_size * 60)
         self.num_shards = num_shards
 
@@ -53,20 +54,27 @@ class WriteToGCS(DoFn):
         self.output_path = output_path
 
     def process(self, key_value, window=DoFn.WindowParam):
-        ts_format = "%H:%M"
+        ts_format = "%Y-%m-%d %H:%M:%S"
         window_start = window.start.to_utc_datetime().strftime(ts_format)
-        window_end = window.end.to_utc_datetime().strftime(ts_format)
+
+        # Extract date and hour from the window start time
+        date_str, time_str = window_start.split(" ")
+        hour_str, minute_str, _ = time_str.split(":")
+        # Combine date and hour to form the folder name
+        folder_name = f"{date_str}/{hour_str}"
+
         shard_id, batch = key_value
-        filename = "-".join([self.output_path, window_start, window_end, str(shard_id)])
+        filename = f"{self.output_path}/{folder_name}/{minute_str}_{shard_id}.txt"
 
         with beam.io.gcsio.GcsIO().open(filename=filename, mode="w") as f:
             for message_body, publish_time in batch:
                 f.write(f"{message_body},{publish_time}\n".encode())
 
+
 class ProcessPubsubMessage(DoFn):
     
-    def __init__(self):
-        self.model = TextEmbeddingModel.from_pretrained("textembedding-gecko@001")
+    def start_bundle(self):
+        self.model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL)
 
     def process(self, element):
         try:
@@ -79,17 +87,17 @@ class ProcessPubsubMessage(DoFn):
             print(f"Error processing message: {e}")
 
     def get_embedding(self, text):
-            embeddings = self.model.get_embeddings([text])
-            for embedding in embeddings:
-                vector = embedding.values
-            return vector
+        embeddings = self.model.get_embeddings([text])
+        for embedding in embeddings:
+            vector = embedding.values
+        return vector
 
-def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=5, pipeline_args=None):
+
+def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3, pipeline_args=None):
     pipeline_options = PipelineOptions(pipeline_args, streaming=True, save_main_session=True)
+    process_pubsub = ProcessPubsubMessage()
 
     with Pipeline(options=pipeline_options) as pipeline:
-
-        process_pubsub = ProcessPubsubMessage()
 
         messages = (
             pipeline
@@ -101,7 +109,7 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=5,
     
         gcs_output = (
                     messages
-                    | "Window into" >> GroupMessagesByFixedWindows(window_size, num_shards)
+                    | "Batch messages" >> GroupMessagesByFixedWindows(window_size, num_shards)
                     | "Write to GCS" >> ParDo(WriteToGCS(output_path))
         )
 
@@ -136,7 +144,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_path",
         help="Path of the output GCS file including the prefix.",
-        default="gs://big-d-project-master-dataset/telegram/output",
+        default="gs://big-d-project-master-dataset/telegram",
     )
     parser.add_argument(
         "--bigquery_table",
@@ -146,7 +154,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_shards",
         type=int,
-        default=5,
+        default=3,
         help="Number of shards to use when writing windowed elements to GCS.",
     )
     known_args, pipeline_args = parser.parse_known_args()

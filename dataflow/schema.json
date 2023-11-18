@@ -1,9 +1,10 @@
 {
-  "id": "big-d-project-404815:telegram.chatroom",
+  "id": "big-d-project-404815:telegram.chatrooms",
   "kind": "bigquery#table",
   "numRows": "0",
   "schema": {
     "fields": [
+      {"mode": "NULLABLE", "name": "message_id", "type": "STRING"},
       {"mode": "NULLABLE", "name": "text", "type": "STRING"},
       {"mode": "NULLABLE", "name": "username", "type": "STRING"},
       {"mode": "NULLABLE", "name": "first_name", "type": "STRING"},
