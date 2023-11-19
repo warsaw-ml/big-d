@@ -131,7 +131,6 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3,
             | "Read from PubSub" >> beam.io.ReadFromPubSub(topic=input_topic)
             | "Decode PubSub message" >> beam.Map(lambda x: x.decode("utf-8"))
             | "Process message" >> beam.ParDo(process_pubsub)
-            # filter invalid messages (not present field in MESSAGE_FIELDS)
             | "Filter out invalid message" >> beam.Filter(lambda x: all(field in x for field in MESSAGE_FIELDS) and x is not None)
         )
 
