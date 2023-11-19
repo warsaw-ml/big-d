@@ -1,0 +1,62 @@
+[
+    {
+        "message_id": "1234567890",
+        "text": "How are you?",
+        "username": "john_doe",
+        "first_name": "John",
+        "last_name": "Doe",
+        "user_id": "73412",
+        "is_bot": "true",
+        "channel_name": "random",
+        "channel_id": "345678",
+        "timestamp": "2023-11-12T13:45:23.456Z"
+    },
+    {
+        "message_id": "2345678901",
+        "text": "I'm doing well, thank you!",
+        "username": "jane_smith",
+        "first_name": "Jane",
+        "last_name": "Smith",
+        "user_id": "98765",
+        "is_bot": "false",
+        "channel_name": "general",
+        "channel_id": "987654",
+        "timestamp": "2023-11-12T14:30:45.789Z"
+    },
+    {
+        "message_id": "3456789012",
+        "text": "Any plans for the weekend?",
+        "username": "bob_jones",
+        "first_name": "Bob",
+        "last_name": "Jones",
+        "user_id": "56789",
+        "is_bot": "false",
+        "channel_name": "plans",
+        "channel_id": "123456",
+        "timestamp": "2023-11-12T15:15:12.345Z"
+    },
+    {
+        "message_id": "4567890123",
+        "text": "Just relaxing at home.",
+        "username": "alice_green",
+        "first_name": "Alice",
+        "last_name": "Green",
+        "user_id": "45678",
+        "is_bot": "false",
+        "channel_name": "weekend_vibes",
+        "channel_id": "567890",
+        "timestamp": "2023-11-12T16:00:01.234Z"
+    },
+    {
+        "message_id": "5678901234",
+        "text": "Nice! Enjoy your weekend.",
+        "username": "sam_wilson",
+        "first_name": "Sam",
+        "last_name": "Wilson",
+        "user_id": "12345",
+        "is_bot": "false",
+        "channel_name": "friendly_chat",
+        "channel_id": "9876543",
+        "timestamp": "2023-11-12T16:45:30.567Z"
+    }
+]
