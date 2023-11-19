@@ -32,10 +32,12 @@ api_id = os.getenv("API_ID")
 api_hash = os.getenv("API_HASH")
 client = TelegramClient("anon", api_id, api_hash).start()
 
-# Load IDs of tg rooms to scrape
-with open("data/tg_calls.yaml") as f:
-    call_channels = yaml.load(f, Loader=yaml.FullLoader)
-    ids = list(call_channels.values())
+
+def upload_batch(data, bucket, file_path):
+    """Uploads a batch of data to a specified GCS bucket."""
+    blob = bucket.blob(file_path)
+    blob.upload_from_string(data=data, content_type="application/json")
+    print("Uploaded:", file_path)
 
 
 async def get_batch(ids):
@@ -111,9 +113,14 @@ async def get_batch(ids):
     # Convert list of dicts to JSON
     data = json.dumps(message_batch)
 
-    # save to file (for testing only)
-    # with open("data/batch.json", "w") as f:
-    # f.write(data)
+    return data
+
+
+if __name__ == "__main__":
+    # Load IDs of tg rooms to scrape
+    with open("data/tg_calls.yaml") as f:
+        call_channels = yaml.load(f, Loader=yaml.FullLoader)
+        ids = list(call_channels.values())
 
     # Get current date and hour
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -122,13 +129,7 @@ async def get_batch(ids):
     # File path in the bucket
     file_path = f"telegram-batch/{current_date}/{current_hour}/batch.json"
 
-    # Create a blob object
-    blob = bucket.blob(file_path)
-
-    # Upload the JSON data
-    blob.upload_from_string(data=data, content_type="application/json")
-
-
-if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(get_batch(ids))
+    data = loop.run_until_complete(get_batch(ids))
+
+    upload_batch(data, bucket, file_path)

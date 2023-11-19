@@ -129,4 +129,5 @@ async def handler(event):
 
 
 print("Listenning for messages from ids:", ids)
+print("number of group chats:", len(ids))
 client.run_until_disconnected()

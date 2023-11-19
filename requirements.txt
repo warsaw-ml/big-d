@@ -5,3 +5,5 @@ telethon
 rich
 PyYaml
 pytz
+pytest
+pytest-asyncio
