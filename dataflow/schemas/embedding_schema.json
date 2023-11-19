@@ -1,0 +1,11 @@
+{
+    "id": "big-d-project-404815:serving_layer.embeddings",
+    "kind": "bigquery#table",
+    "numRows": "0",
+    "schema": {
+      "fields": [
+        {"mode": "NULLABLE", "name": "message_id", "type": "STRING"},
+        {"mode": "NULLABLE", "name": "embedding", "type": "FLOAT", "description": "The embedding of the message"}
+      ]
+    }
+  }

@@ -1,5 +1,5 @@
 {
-  "id": "big-d-project-404815:telegram.chatrooms",
+  "id": "big-d-project-404815:serving_layer.chatrooms",
   "kind": "bigquery#table",
   "numRows": "0",
   "schema": {

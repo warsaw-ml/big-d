@@ -1,0 +1,13 @@
+{
+    "id": "big-d-project-404815:serving_layer.bitcoin",
+    "kind": "bigquery#table",
+    "numRows": "0",
+    "schema": {
+      "fields": [
+        {"mode": "NULLABLE", "name": "symbol", "type": "STRING"},
+        {"mode": "NULLABLE", "name": "price", "type": "STRING"},
+        {"mode": "NULLABLE", "name": "timestamp", "type": "TIMESTAMP"}
+      ]
+    }
+  }
+  
