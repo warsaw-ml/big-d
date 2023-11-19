@@ -64,11 +64,15 @@ class WriteToGCS(DoFn):
         folder_name = f"{date_str}/{hour_str}"
 
         shard_id, batch = key_value
-        filename = f"{self.output_path}/{folder_name}/{minute_str}_{shard_id}.txt"
+        filename = f"{self.output_path}/{folder_name}/{minute_str}_{shard_id}.json"
+
+        # Extract message bodies from the batch
+        messages = [message_body for message_body, _ in batch]
 
         with beam.io.gcsio.GcsIO().open(filename=filename, mode="w") as f:
-            for message_body, publish_time in batch:
-                f.write(f"{message_body},{publish_time}\n".encode())
+            # Write JSON containing the list of messages
+            f.write(json.dumps(messages).encode())
+
 
 
 class ProcessPubsubMessage(DoFn):
@@ -82,7 +86,9 @@ class ProcessPubsubMessage(DoFn):
             text_to_embed = data.get('text', '')
             embedding = self.get_embedding(text_to_embed)
             data['embedding'] = embedding
+            # yield json dump of data
             yield data
+
         except Exception as e:
             print(f"Error processing message: {e}")
 
@@ -149,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--bigquery_table",
         help="BigQuery table to write to.",
-        default="chatroom",
+        default="chatrooms",
     )
     parser.add_argument(
         "--num_shards",

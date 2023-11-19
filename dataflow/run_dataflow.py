@@ -9,7 +9,7 @@ BUCKET_NAME = 'big-d-project-master-dataset'
 
 command = [
     'python', 
-    './full_dataflow.py',
+    './bitcoin_dataflow.py',
     f'--project={PROJECT_ID}',
     f'--region={REGION}',
     f'--window_size={WINDOW_SIZE}',
