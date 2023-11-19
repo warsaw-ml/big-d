@@ -13,8 +13,8 @@ from apache_beam.options.pipeline_options import PipelineOptions
 PROJECT_ID = 'big-d-project-404815'
 TOPIC_NAME = 'bitcoin-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
-BIGQUERY_DATASET = 'telegram'
-BIGQUERY_TABLE = 'chatrooms'
+BIGQUERY_DATASET = 'serving_layer'
+BIGQUERY_TABLE = 'bitcoin'
 LOCATION = 'europe-central2'
 
 
@@ -23,7 +23,7 @@ def get_bigquery_schema(schema_path):
         schema_list = json.load(schema_file)
     return ','.join(f"{field['name']}:{field['type']}" for field in schema_list["schema"]['fields'])
 
-schema = get_bigquery_schema('schema.json')
+schema = get_bigquery_schema('schemas/bitcoin_schema.json')
 
 
 class GroupMessagesByFixedWindows(PTransform):
@@ -75,9 +75,9 @@ class WriteToGCS(DoFn):
 class ProcessPubsubMessage(DoFn):
 
     def process(self, element):
-        element = json.loads(element)
-        element['timestamp'] = datetime.now(pytz.utc).isoformat()
-        return [json.dumps(element)]
+        data = json.loads(element)
+        data['timestamp'] = datetime.now(pytz.utc).isoformat()
+        yield data
 
 
 def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3, pipeline_args=None):
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--bigquery_table",
         help="BigQuery table to write to.",
-        default="chatroom",
+        default="bitcoin",
     )
     parser.add_argument(
         "--num_shards",

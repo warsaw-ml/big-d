@@ -14,7 +14,7 @@ from apache_beam.options.pipeline_options import PipelineOptions
 PROJECT_ID = 'big-d-project-404815'
 TOPIC_NAME = 'telegram-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
-BIGQUERY_DATASET = 'telegram'
+BIGQUERY_DATASET = 'serving_layer'
 BIGQUERY_TABLE = 'chatrooms'
 LOCATION = 'europe-central2'
 EMBEDDING_MODEL = 'textembedding-gecko@001'
@@ -25,8 +25,8 @@ def get_bigquery_schema(schema_path):
         schema_list = json.load(schema_file)
     return ','.join(f"{field['name']}:{field['type']}" for field in schema_list["schema"]['fields'])
 
-schema = get_bigquery_schema('schema.json')
-
+schema_embeddings = get_bigquery_schema('schemas/embedding_schema.json')
+schema_chatrooms = get_bigquery_schema('schemas/telegram_schema.json')
 
 class GroupMessagesByFixedWindows(PTransform):
     def __init__(self, window_size, num_shards=3):
@@ -99,6 +99,21 @@ class ProcessPubsubMessage(DoFn):
         return vector
 
 
+class ExtractEmbeddings(DoFn):
+    def process(self, element):
+        if 'embedding' in element:
+            message_id = element.get('message_id', '')
+            embedding = element['embedding']
+            yield {'message_id': message_id, 'embedding': embedding}
+
+
+class ExtractChatrooms(DoFn):
+    def process(self, element):
+        # Exclude embeddings from the chatrooms table
+        element.pop('embedding', None)
+        yield element
+
+
 def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3, pipeline_args=None):
     pipeline_options = PipelineOptions(pipeline_args, streaming=True, save_main_session=True)
     process_pubsub = ProcessPubsubMessage()
@@ -112,23 +127,37 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3,
             | "Process message" >> beam.ParDo(process_pubsub)
             | "Filter out invalid message" >> beam.Filter(lambda x: x is not None)
         )
-    
+
         gcs_output = (
-                    messages
-                    | "Batch messages" >> GroupMessagesByFixedWindows(window_size, num_shards)
-                    | "Write to GCS" >> ParDo(WriteToGCS(output_path))
+            messages
+            | "Batch messages" >> GroupMessagesByFixedWindows(window_size, num_shards)
+            | "Write to GCS" >> ParDo(WriteToGCS(output_path))
         )
 
-        bq_output = (
+        # Write messages to chatrooms table in BigQuery (excluding embeddings)
+        bq_output_chatrooms = (
             messages
-            | "Write to BigQuery" >> WriteToBigQuery(
-                f'{PROJECT_ID}:{BIGQUERY_DATASET}.{bigquery_table}',
-                schema=schema,
+            | "Extract chatrooms" >> ParDo(ExtractChatrooms())
+            | "Write to BigQuery (chatrooms)" >> WriteToBigQuery(
+                f'{PROJECT_ID}:{BIGQUERY_DATASET}.chatrooms',
+                schema=schema_chatrooms,
                 create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
                 write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND
             )
-        
         )
+
+        # Extract embeddings and write to embeddings table in BigQuery
+        bq_output_embeddings = (
+            messages
+            | "Extract embeddings" >> ParDo(ExtractEmbeddings())
+            | "Write to BigQuery (embeddings)" >> WriteToBigQuery(
+                f'{PROJECT_ID}:{BIGQUERY_DATASET}.embeddings',
+                schema=schema_embeddings,
+                create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
+                write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND
+            )
+        )
+
 
 if __name__ == "__main__":
 
