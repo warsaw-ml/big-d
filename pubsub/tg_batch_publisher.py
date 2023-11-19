@@ -126,7 +126,7 @@ async def get_batch(ids):
     blob = bucket.blob(file_path)
 
     # Upload the JSON data
-    blob.upload_from_string(data=json.dumps(data), content_type="application/json")
+    blob.upload_from_string(data=data, content_type="application/json")
 
 
 if __name__ == "__main__":
