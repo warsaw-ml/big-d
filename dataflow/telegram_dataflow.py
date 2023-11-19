@@ -18,7 +18,7 @@ BIGQUERY_DATASET = 'serving_layer'
 BIGQUERY_TABLE = 'chatrooms'
 LOCATION = 'europe-central2'
 EMBEDDING_MODEL = 'textembedding-gecko@001'
-
+MESSAGE_FIELDS = ['message_id', 'text', 'username', 'first_name', 'last_name', 'user_id', 'is_bot', 'channel_name', 'channel_id', 'timestamp', 'embedding']
 
 def get_bigquery_schema(schema_path):
     with open(schema_path, 'r') as schema_file:
@@ -115,7 +115,13 @@ class ExtractChatrooms(DoFn):
 
 
 def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3, pipeline_args=None):
-    pipeline_options = PipelineOptions(pipeline_args, streaming=True, save_main_session=True)
+    
+    pipeline_options = PipelineOptions(
+        pipeline_args, 
+        streaming=True, 
+        save_main_session=True,
+        requirements_file='requirements.txt')
+    
     process_pubsub = ProcessPubsubMessage()
 
     with Pipeline(options=pipeline_options) as pipeline:
@@ -125,7 +131,8 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3,
             | "Read from PubSub" >> beam.io.ReadFromPubSub(topic=input_topic)
             | "Decode PubSub message" >> beam.Map(lambda x: x.decode("utf-8"))
             | "Process message" >> beam.ParDo(process_pubsub)
-            | "Filter out invalid message" >> beam.Filter(lambda x: x is not None)
+            # filter invalid messages (not present field in MESSAGE_FIELDS)
+            | "Filter out invalid message" >> beam.Filter(lambda x: all(field in x for field in MESSAGE_FIELDS) and x is not None)
         )
 
         gcs_output = (

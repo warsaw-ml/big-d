@@ -8,7 +8,6 @@
     "is_bot": "true",
     "channel_name": "random",
     "channel_id": "345678",
-    "timestamp": "2023-11-12T13:45:23.456Z",
-    "embedding": [0.1, 0.2, 0.3, 0.4, 0.5]
+    "timestamp": "2023-11-12T13:45:23.456Z"
 }
 

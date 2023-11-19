@@ -16,6 +16,7 @@ TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
 BIGQUERY_DATASET = 'serving_layer'
 BIGQUERY_TABLE = 'bitcoin'
 LOCATION = 'europe-central2'
+MESSAGE_FIELDS = ['symbol', 'price', 'timestamp']
 
 
 def get_bigquery_schema(schema_path):
@@ -81,7 +82,13 @@ class ProcessPubsubMessage(DoFn):
 
 
 def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3, pipeline_args=None):
-    pipeline_options = PipelineOptions(pipeline_args, streaming=True, save_main_session=True)
+    
+    pipeline_options = PipelineOptions(
+        pipeline_args, 
+        streaming=True, 
+        save_main_session=True,
+        requirements_file='requirements.txt')
+    
     process_pubsub = ProcessPubsubMessage()
 
     with Pipeline(options=pipeline_options) as pipeline:
@@ -91,7 +98,7 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3,
             | "Read from PubSub" >> beam.io.ReadFromPubSub(topic=input_topic)
             | "Decode PubSub message" >> beam.Map(lambda x: x.decode("utf-8"))
             | "Process message" >> beam.ParDo(process_pubsub)
-            | "Filter out invalid message" >> beam.Filter(lambda x: x is not None)
+            | "Filter out invalid message" >> beam.Filter(lambda x: all(field in x for field in MESSAGE_FIELDS) and x is not None)
         )
     
         gcs_output = (
