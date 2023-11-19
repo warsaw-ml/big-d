@@ -1,5 +1,7 @@
 google-cloud-pubsub
+google-cloud-storage
 autorootcwd
 telethon
 rich
 PyYaml
+pytz

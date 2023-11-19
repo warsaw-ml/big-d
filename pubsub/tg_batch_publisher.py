@@ -1,84 +1,132 @@
 import asyncio
 import json
 import os
+import random
+from datetime import datetime, timedelta
 
 import autorootcwd
+import pytz
 import yaml
-from google.cloud import pubsub_v1
+from google.cloud import storage
 from google.oauth2 import service_account
 from rich import print
-from telethon import events
+from telethon import events, functions
 from telethon.sync import TelegramClient
+from tqdm import tqdm
 
+# GC project variables
 PROJECT_ID = "big-d-project-404815"
-TOPIC_NAME = "telegram-batch"
-topic_path = f"projects/{PROJECT_ID}/topics/{TOPIC_NAME}"
+bucket_name = "big-d-project-master-dataset"
+
+# Load credentials
 credentials = service_account.Credentials.from_service_account_file("data/big-d-project-404815-44996acd710d.json")
-publisher = pubsub_v1.PublisherClient(credentials=credentials)
 
-with open("data/tg_ids.txt") as f:
-    ids = f.read().splitlines()
+# Initialize Google Cloud Storage client
+client = storage.Client(credentials=credentials, project=PROJECT_ID)
 
+# Get the bucket object
+bucket = client.get_bucket(bucket_name)
 
+# Setup Telegram client
 api_id = os.getenv("API_ID")
 api_hash = os.getenv("API_HASH")
 client = TelegramClient("anon", api_id, api_hash).start()
 
-
-def publish_message(data):
-    data = json.dumps(data).encode("utf-8")
-    future = publisher.publish(topic_path, data=data)
-    print(f"Published message: {data}")
-    try:
-        future.result()  # Wait for publish to complete
-    except Exception as e:
-        print(f"An error occurred: {e}")
+# Load IDs of tg rooms to scrape
+with open("data/tg_calls.yaml") as f:
+    call_channels = yaml.load(f, Loader=yaml.FullLoader)
+    ids = list(call_channels.values())
 
 
 async def get_batch(ids):
+    """Scrape a batch of messages from last hour and upload to GCS bucket."""
+
     message_list = []
 
-    for id in ids:
-        messages = await client.get_messages(int(id), limit=5)
+    # get timestamp from last hour
+    # last_hour_timestamp = datetime.now() - timedelta(hours=10)
+    # last_hour_timestamp = last_hour_timestamp.replace(tzinfo=pytz.utc)
+    # print(last_hour_timestamp)
+
+    # get messages from all channels
+    print("Downloading messages...")
+    for id in tqdm(ids):
+        messages = await client.get_messages(id, limit=10)
         message_list += messages
 
+    print("Processing messages...")
     message_batch = []
-    for msg in message_list:
-        message_id = str(msg.peer_id.channel_id) + str(msg.id)
+    for msg in tqdm(message_list):
+        # get message text and timestamp
         text = msg.text
+        timestamp = str(msg.date)
+
+        # filter messages older than from last hour
+        # if msg.date < last_hour_timestamp:
+        #     continue
+
+        # filter empty messages and useless "gm" messages
+        if not text or ("gm" in text.lower() and len(text) < 15):
+            continue
+
+        # create unique message id
+        message_id = str(msg.peer_id.channel_id) + str(msg.id)
+
+        # idk why this happens but it does
+        if not msg.sender:
+            # print("no sender!")
+            continue
+
+        # get info about sender
         username = msg.sender.username
-        first_name = msg.sender.first_name
-        last_name = msg.sender.last_name
         user_id = msg.sender.id
-        is_bot = msg.sender.bot
+        is_bot = False
+
+        # get info about source channel
         channel_id = msg.peer_id.channel_id
         channel_entitiy = await client.get_entity(msg.peer_id)
         channel_name = channel_entitiy.title
-        timestamp = str(msg.date)
 
+        # create final message dataframe
         dataframe = {
             "message_id": message_id,
             "text": text,
             "user_id": user_id,
             "username": username,
-            "first_name": first_name,
-            "last_name": last_name,
+            "first_name": None,
+            "last_name": None,
             "is_bot": is_bot,
             "channel_id": channel_id,
             "channel_name": channel_name,
             "timestamp": timestamp,
         }
-        print(dataframe)
-
         message_batch.append(dataframe)
 
-        # publish_message(message_batch)
-
-    # limit number of messages to 100
+    # Sample 100 messages randomly
     if len(message_batch) > 100:
-        message_batch = message_batch[:100]
+        message_batch = random.sample(message_batch, 100)
 
-    # publish_message(message_batch)
+    print("Batch len:", len(message_batch))
+
+    # Convert list of dicts to JSON
+    data = json.dumps(message_batch)
+
+    # save to file (for testing only)
+    # with open("data/batch.json", "w") as f:
+    # f.write(data)
+
+    # Get current date and hour
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    current_hour = datetime.now().strftime("%H")
+
+    # File path in the bucket
+    file_path = f"telegram-batch/{current_date}/{current_hour}/batch.json"
+
+    # Create a blob object
+    blob = bucket.blob(file_path)
+
+    # Upload the JSON data
+    blob.upload_from_string(data=json.dumps(data), content_type="application/json")
 
 
 if __name__ == "__main__":

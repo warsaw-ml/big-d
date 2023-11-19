@@ -160,6 +160,7 @@ cython_debug/
 #.idea/
 
 *.session
+*.session-journal
 .DS_Store
 data/
 gcpenv/
