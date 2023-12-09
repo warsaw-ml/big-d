@@ -7,3 +7,6 @@ PyYaml
 pytz
 pytest
 pytest-asyncio
+pandas
+google-cloud-storage
+pyarrow
