@@ -24,7 +24,7 @@ def process_and_save_partition(bucket_name, file_paths, source_dir):
     if is_bitcoin== False:
         bitcoin_data_list = []
         bitcoin_blobs = storage_client.bucket(bucket_name).list_blobs(prefix=f"{'bitcoin'}/")
-        bitcoin_file_paths = [blob.name for blob in bitcoin_blobs if blob.name.endswith('.json')][:5]
+        bitcoin_file_paths = [blob.name for blob in bitcoin_blobs if blob.name.endswith('.json')]
         for file_path in bitcoin_file_paths:
             blob = storage_client.bucket(bucket_name).blob(file_path)
             json_data_str = blob.download_as_text()
@@ -87,5 +87,5 @@ source_directories = ['telegram', "telegram-batch", "bitcoin"]
 
 for source_dir in source_directories:
     blobs = storage_client.bucket(bucket_name).list_blobs(prefix=f"{source_dir}/")
-    file_paths = [blob.name for blob in blobs if blob.name.endswith('.json')][:5]
+    file_paths = [blob.name for blob in blobs if blob.name.endswith('.json')]
     process_and_save_partition(bucket_name, file_paths, source_dir)
