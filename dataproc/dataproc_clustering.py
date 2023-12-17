@@ -52,3 +52,6 @@ predictions = model.transform(embedding)
 # Save message_id and cluster columns to GCS
 csv_path = "gs://big-d-project-master-dataset/csv/embeddings_clustering.csv"
 predictions.select("message_id", "cluster").write.csv(csv_path, header=True, mode="overwrite")
+
+# Stop the Spark session
+spark.stop()
