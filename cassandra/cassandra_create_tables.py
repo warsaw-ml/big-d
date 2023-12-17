@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS embeddings (
 );
 """
 
-bitcoin_cql = """
-CREATE TABLE IF NOT EXISTS bitcoin (
+crypto_cql = """
+CREATE TABLE IF NOT EXISTS crypto (
     symbol TEXT PRIMARY KEY,
     price TEXT,
     timestamp TIMESTAMP
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS bitcoin (
 """
 
 cluster_cql = """
-CREATE TABLE IF NOT EXISTS cluster (
+CREATE TABLE IF NOT EXISTS clusters (
     message_id TEXT PRIMARY KEY,
     cluster INT
 );
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS cluster (
 # Execute CQL queries to create tables
 session.execute(chatrooms_cql)
 session.execute(embeddings_cql)
-session.execute(bitcoin_cql)
+session.execute(crypto_cql)
 session.execute(cluster_cql)
 
 # Close the Cassandra session and cluster connection
