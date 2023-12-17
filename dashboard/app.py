@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import re
 
 import pandas as pd
@@ -7,8 +8,11 @@ import plotly.express as px
 import streamlit as st
 import umap.umap_ as umap
 
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster
 
-def get_data():
+
+def get_data_mock():
     path = "data/telegram"
 
     data = []
@@ -22,17 +26,56 @@ def get_data():
 
     df = pd.concat([pd.DataFrame(d) for d in data], ignore_index=True)
 
+    # replace Nan with string "None"
+    df = df.fillna("None")
+
+    return df
+
+
+def get_data_cassandra():
+    # Configure your Cassandra connection parameters
+    CASSANDRA_HOST = "your_cassandra_host"
+    CASSANDRA_PORT = 9042  # default Cassandra port
+    CASSANDRA_USERNAME = "your_username"
+    CASSANDRA_PASSWORD = "your_password"
+    KEYSPACE = "your_keyspace"
+    TABLE_NAME = "your_table"
+
+    # Create an authentication provider if your cluster uses authentication
+    auth_provider = PlainTextAuthProvider(username=CASSANDRA_USERNAME, password=CASSANDRA_PASSWORD)
+
+    # Connect to the Cassandra cluster
+    cluster = Cluster([CASSANDRA_HOST], port=CASSANDRA_PORT, auth_provider=auth_provider)
+    session = cluster.connect(KEYSPACE)
+
+    # Execute a query to retrieve data from the table
+    query = f"SELECT * FROM {TABLE_NAME};"
+    rows = session.execute(query)
+
+    # Convert the query result to a pandas DataFrame
+    data = []
+    for row in rows:
+        data.append(row)
+
+    df = pd.DataFrame(data)
+
+    # Close the Cassandra session
+    cluster.shutdown()
+
     return df
 
 
 # Pull data from Cassandra
-df = get_data()
+df = get_data_mock()
 embeddings = df.embedding.tolist()
 texts = df.text.tolist()
 users = df.username.tolist()
 channel_names = df.channel_name.tolist()
 umap_embeddings = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2).fit_transform(embeddings)
 df_embeddings_umap = pd.DataFrame(umap_embeddings, columns=["x", "y"])
+
+# generate list of random cluster numbers for each datapoints
+cluster_number = [random.randint(1, 10) for _ in range(len(df_embeddings_umap))]
 
 # Set layout
 st.set_page_config(layout="wide")
@@ -44,11 +87,11 @@ st.title("Dashboard")
 st.subheader("Telegram messages latent space")
 
 # Create an interactive scatter plot using Plotly
-fig = px.scatter(df_embeddings_umap, x="x", y="y")
+fig = px.scatter(df_embeddings_umap, x="x", y="y", color=cluster_number, color_continuous_scale="Viridis")
 
 # Update the hovertemplate
 fig.update_traces(
-    hovertemplate='Message: "%{hovertext}"</b><br>br>Username: <i>%{customdata[0]}</i></b><br>Channel: <i>%{customdata[1]}</i>',
+    hovertemplate='Message: "%{hovertext}"</b><br><br>Username: <i>%{customdata[0]}</i></b><br>Channel: <i>%{customdata[1]}</i>',
     hovertext=texts,
     customdata=list(zip(users, channel_names)),
     marker=dict(size=3),
@@ -117,5 +160,4 @@ st.dataframe(ticker_df, height=738)
 # Optional: Display the raw data as a table
 st.subheader("Example Messages")
 df_display = df[["text", "username", "channel_name", "timestamp"]].sample(1000)
-if st.checkbox("Show", True, key="show_raw_data"):
-    st.dataframe(df_display)
+st.dataframe(df_display)
