@@ -10,7 +10,7 @@ import umap.umap_ as umap
 
 from cassandra.cluster import Cluster
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "data/big-d-project-404815-44996acd710d.json"
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "data/big-d-project-404815-44996acd710d.json"
 
 
 def get_data_mock():
@@ -33,33 +33,62 @@ def get_data_mock():
     return df
 
 
-def get_data_cassandra():
-    cassandra_cluster = Cluster(["34.118.103.223"])
-    session = cassandra_cluster.connect("cassandra1")
-
-    # Execute a query to retrieve data from the table
-    query = "SELECT * FROM clusters;"
-    rows = session.execute(query)
-
-    # Convert the query result to a pandas DataFrame
+def convert_to_df(rows):
     data = []
     for row in rows:
         data.append(row)
 
     df = pd.DataFrame(data)
 
-    # Close the Cassandra session
-    cassandra_cluster.shutdown()
-
     return df
 
 
-data = get_data_cassandra()
-exit()
+def get_data_cassandra():
+    cassandra_cluster = Cluster(["34.118.53.49"])
+    session = cassandra_cluster.connect("cassandra1")
+
+    # Execute a query to retrieve data from the table
+    # query = "SELECT * FROM crypto;"
+    # rows_btc = session.execute(query)
+
+    query = "SELECT * FROM clusters;"
+    rows_clusters = session.execute(query)
+
+    # query = "SELECT * FROM chatrooms;"
+    # rows_messages = session.execute(query)
+
+    # query = "SELECT * FROM embeddings;"
+    # rows_embeddings = session.execute(query)
+
+    # df_btc = convert_to_df(rows_btc)
+    df_clusters = convert_to_df(rows_clusters)
+    # df_messages = convert_to_df(rows_messages)
+    # df_embeddings = convert_to_df(rows_embeddings)
+
+    # print(df_messages.shape)
+    print(df_clusters.shape)
+
+    cassandra_cluster.shutdown()
+
+    # print(df_embeddings)
+
+    # inner join if messages and clusters by meessage_id
+    # df_messages = df_messages.merge(df_clusters, on="message_id", how="inner")
+    # df_messages = df_messages.merge(df_embeddings, on="message_id", how="inner")
+
+    return df_clusters
 
 
 # Pull data from Cassandra
-df = get_data_mock()
+df_messages = get_data_mock()
+df_clusters = get_data_cassandra()
+
+print(df_messages.shape)
+print(df_clusters.shape)
+df = df_messages.merge(df_clusters, on="message_id", how="inner")
+print(df.shape)
+
+
 embeddings = df.embedding.tolist()
 texts = df.text.tolist()
 users = df.username.tolist()
@@ -68,7 +97,8 @@ umap_embeddings = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2).fit_tr
 df_embeddings_umap = pd.DataFrame(umap_embeddings, columns=["x", "y"])
 
 # generate list of random cluster numbers for each datapoints
-cluster_number = [random.randint(1, 10) for _ in range(len(df_embeddings_umap))]
+# cluster_number = [random.randint(1, 10) for _ in range(len(df_embeddings_umap))]
+cluster_number = df["cluster"].tolist()
 
 # Set layout
 st.set_page_config(layout="wide")
@@ -80,7 +110,7 @@ st.title("Dashboard")
 st.subheader("Telegram messages latent space")
 
 # Create an interactive scatter plot using Plotly
-fig = px.scatter(df_embeddings_umap, x="x", y="y", color=cluster_number, color_continuous_scale="Viridis")
+fig = px.scatter(df_embeddings_umap, x="x", y="y", color=cluster_number)
 
 # Update the hovertemplate
 fig.update_traces(
@@ -154,3 +184,14 @@ st.dataframe(ticker_df, height=738)
 st.subheader("Example Messages")
 df_display = df[["text", "username", "channel_name", "timestamp"]].sample(1000)
 st.dataframe(df_display)
+
+# Display the statistics
+st.subheader("Total Number of Messages in the Last Week")
+st.write(df.shape[0])
+
+st.subheader("Number of Messages per Hour")
+st.write(df.shape[0] / 168)
+
+# # extract hour and add as new field to df
+# df["hour"] = df["timestamp"].dt.hour
+# messages_per_hour = df.groupby("hour").size()
