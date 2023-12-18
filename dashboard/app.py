@@ -8,8 +8,9 @@ import plotly.express as px
 import streamlit as st
 import umap.umap_ as umap
 
-from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "data/big-d-project-404815-44996acd710d.json"
 
 
 def get_data_mock():
@@ -33,23 +34,11 @@ def get_data_mock():
 
 
 def get_data_cassandra():
-    # Configure your Cassandra connection parameters
-    CASSANDRA_HOST = "your_cassandra_host"
-    CASSANDRA_PORT = 9042  # default Cassandra port
-    CASSANDRA_USERNAME = "your_username"
-    CASSANDRA_PASSWORD = "your_password"
-    KEYSPACE = "your_keyspace"
-    TABLE_NAME = "your_table"
-
-    # Create an authentication provider if your cluster uses authentication
-    auth_provider = PlainTextAuthProvider(username=CASSANDRA_USERNAME, password=CASSANDRA_PASSWORD)
-
-    # Connect to the Cassandra cluster
-    cluster = Cluster([CASSANDRA_HOST], port=CASSANDRA_PORT, auth_provider=auth_provider)
-    session = cluster.connect(KEYSPACE)
+    cassandra_cluster = Cluster(["34.118.103.223"])
+    session = cassandra_cluster.connect("cassandra1")
 
     # Execute a query to retrieve data from the table
-    query = f"SELECT * FROM {TABLE_NAME};"
+    query = "SELECT * FROM clusters;"
     rows = session.execute(query)
 
     # Convert the query result to a pandas DataFrame
@@ -60,9 +49,13 @@ def get_data_cassandra():
     df = pd.DataFrame(data)
 
     # Close the Cassandra session
-    cluster.shutdown()
+    cassandra_cluster.shutdown()
 
     return df
+
+
+data = get_data_cassandra()
+exit()
 
 
 # Pull data from Cassandra
