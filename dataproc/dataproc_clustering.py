@@ -9,7 +9,7 @@ import logging
 
 
 EMBEDDING_SIZE = 768
-
+CSV_PATH = "gs://bda-wut-project-master-dataset/csv/embeddings_clustering.csv"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ spark = SparkSession.builder.appName("EmbeddingsClustering").getOrCreate()
 logger.info("1. Spark session created")
 
 # Read Parquet files from GCS and filter those with 'embedding' column
-parquet_path = "gs://big-d-project-master-dataset/parquet/*.parquet"
+parquet_path = "gs://bda-wut-project-master-dataset/parquet/*.parquet"
 df_list = []
 
 for file_path in spark.sparkContext.binaryFiles(parquet_path).keys().collect():
@@ -57,8 +57,7 @@ predictions = model.transform(embedding)
 logger.info("5. KMeans model created and predictions made")
 
 # Save message_id and cluster columns to GCS
-csv_path = "gs://big-d-project-master-dataset/csv/embeddings_clustering.csv"
-predictions.select("message_id", "cluster").write.csv(csv_path, header=True, mode="overwrite")
+predictions.select("message_id", "cluster").write.csv(CSV_PATH, header=True, mode="overwrite")
 
 # Stop the Spark session
 spark.stop()

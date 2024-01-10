@@ -10,7 +10,7 @@ from apache_beam import DoFn, GroupByKey, ParDo, Pipeline, PTransform, WindowInt
 from apache_beam.io import WriteToBigQuery
 from apache_beam.options.pipeline_options import PipelineOptions
 
-PROJECT_ID = 'big-d-project-404815'
+PROJECT_ID = 'bda-wut'
 TOPIC_NAME = 'bitcoin-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
 BIGQUERY_DATASET = 'serving_layer'
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         "--input_topic",
         help="The Cloud Pub/Sub topic to read from."
         '"projects/<PROJECT_ID>/topics/<TOPIC_ID>".',
-        default="projects/big-d-project-404815/topics/bitcoin-topic",
+        default="projects/bda-wut/topics/bitcoin-topic",
     )
     parser.add_argument(
         "--window_size",
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_path",
         help="Path of the output GCS file including the prefix.",
-        default="gs://big-d-project-master-dataset/bitcoin",
+        default="gs://bda-wut-project-master-dataset/bitcoin",
     )
     parser.add_argument(
         "--bigquery_table",

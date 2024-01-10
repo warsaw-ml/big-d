@@ -1,9 +1,9 @@
 from google.cloud import bigquery
 
 # Replace these values with your project ID, dataset name, and table name
-project_id = "big-d-project-404815"
+project_id = "bda-wut"
 dataset_name = 'serving_layer'
-table_names = ['chatrooms', 'embeddings', 'bitcoin']
+table_names = ['chatrooms', 'embeddings', 'crypto']
 # Create BigQuery client
 client = bigquery.Client(project=project_id)
 
@@ -11,7 +11,12 @@ client = bigquery.Client(project=project_id)
 dataset_ref = client.dataset(dataset_name)
 
 # if dataset not exists
-if not client.get_dataset(dataset_ref,):
+try:
+    client.get_dataset(dataset_ref)
+    print(f"Dataset {dataset_name} already exists.")
+except Exception as e:
+    # Dataset not found, create it
+    print(f"Creating dataset {dataset_name}.")
     dataset = bigquery.Dataset(dataset_ref)
     dataset = client.create_dataset(dataset)
 
