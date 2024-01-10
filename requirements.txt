@@ -3,6 +3,7 @@ autorootcwd
 cassandra-driver
 google-cloud-pubsub
 google-cloud-storage
+google-cloud-aiplatform
 plotly
 pandas
 pytest
