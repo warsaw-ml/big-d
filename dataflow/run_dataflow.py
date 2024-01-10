@@ -3,13 +3,13 @@ import os
 
 WINDOW_SIZE = 1
 RUNNER = 'DataflowRunner'
-PROJECT_ID = 'big-d-project-404815'
+PROJECT_ID = 'bda-wut'
 REGION = 'europe-central2'
-BUCKET_NAME = 'big-d-project-master-dataset'
+BUCKET_NAME = 'bda-wut-project-master-dataset'
 
 command = [
     'python', 
-    './bitcoin_dataflow.py',
+    './telegram_dataflow.py',
     f'--project={PROJECT_ID}',
     f'--region={REGION}',
     f'--window_size={WINDOW_SIZE}',
