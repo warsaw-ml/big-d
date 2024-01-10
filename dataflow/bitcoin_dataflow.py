@@ -9,14 +9,16 @@ import apache_beam as beam
 from apache_beam import DoFn, GroupByKey, ParDo, Pipeline, PTransform, WindowInto, WithKeys
 from apache_beam.io import WriteToBigQuery
 from apache_beam.options.pipeline_options import PipelineOptions
+from cassandra.cluster import Cluster
 
 PROJECT_ID = 'bda-wut'
 TOPIC_NAME = 'bitcoin-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
-BIGQUERY_DATASET = 'serving_layer'
-BIGQUERY_TABLE = 'bitcoin'
-LOCATION = 'europe-central2'
+CASSANDRA_HOST = '34.118.38.6'  # Update with your Cassandra host IP or DNS
+CASSANDRA_KEYSPACE = 'bigd'  # Update with your Cassandra keyspace
+CASSANDRA_TABLE = 'bitcoin'
 MESSAGE_FIELDS = ['symbol', 'price', 'timestamp']
+BIGQUERY_DATASET = 'serving_layer'
 
 
 def get_bigquery_schema(schema_path):
@@ -72,6 +74,21 @@ class WriteToGCS(DoFn):
             # Write JSON containing the list of messages
             f.write(json.dumps(messages).encode())
 
+class WriteToCassandra(DoFn):
+    def process(self, element):
+        cluster = Cluster([CASSANDRA_HOST])
+        session = cluster.connect(CASSANDRA_KEYSPACE)
+
+        # Convert timestamp to a format suitable for Cassandra
+        element['timestamp'] = datetime.fromisoformat(element['timestamp']).strftime("%Y-%m-%d %H:%M:%S")
+
+        # Insert data into Cassandra table
+        session.execute(
+            f"INSERT INTO {CASSANDRA_TABLE} (symbol, price, timestamp) VALUES (?, ?, ?)",
+            (str(element['symbol']), float(element['price']), datetime.fromisoformat(element['timestamp']))
+        )
+
+        cluster.shutdown()
 
 class ProcessPubsubMessage(DoFn):
 
@@ -116,6 +133,11 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3,
                 write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND
             )
         
+        )
+
+        cassandra_output = (
+            messages
+            | "Write to Cassandra" >> ParDo(WriteToCassandra())
         )
 
 if __name__ == "__main__":

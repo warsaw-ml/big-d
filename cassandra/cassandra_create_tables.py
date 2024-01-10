@@ -1,8 +1,8 @@
 from cassandra.cluster import Cluster
 
 # Replace these values with your Cassandra cluster information
-cluster = Cluster(['34.118.103.223'])
-session = cluster.connect('cassandra1')
+cluster = Cluster(['34.118.38.6'])
+session = cluster.connect('bigd')
 
 # Define CQL queries to create tables
 chatrooms_cql = """
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS embeddings (
 crypto_cql = """
 CREATE TABLE IF NOT EXISTS crypto (
     symbol TEXT PRIMARY KEY,
-    price TEXT,
+    price DOUBLE,
     timestamp TIMESTAMP
 );
 """

@@ -9,7 +9,7 @@ BUCKET_NAME = 'bda-wut-project-master-dataset'
 
 command = [
     'python', 
-    './telegram_dataflow.py',
+    './bitcoin_dataflow.py',
     f'--project={PROJECT_ID}',
     f'--region={REGION}',
     f'--window_size={WINDOW_SIZE}',
