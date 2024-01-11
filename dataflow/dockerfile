@@ -5,8 +5,9 @@ RUN pip install --no-cache-dir \
     apache-beam[gcp] \
     cassandra-driver
     
+COPY --from=apache/beam_python3.10_sdk:2.51.0 /opt/apache/beam /opt/apache/beam
 
-FROM apache/beam_python3.10_sdk:2.51.0
+ENTRYPOINT ["opt/apache/beam/boot"]
 
 # Install Cassandra driver
 # Add your additional configuration here

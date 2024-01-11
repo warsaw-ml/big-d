@@ -6,6 +6,8 @@ RUNNER = 'DataflowRunner'
 PROJECT_ID = 'bda-wut'
 REGION = 'europe-central2'
 BUCKET_NAME = 'bda-wut-project-master-dataset'
+REPOSITORY = 'bda-wut-repo'
+DOCKER_NAME = 'dataflow/df-docker:latest'
 
 command = [
     'python', 
@@ -14,7 +16,11 @@ command = [
     f'--region={REGION}',
     f'--window_size={WINDOW_SIZE}',
     f'--runner={RUNNER}',
-    f'--temp_location=gs://{BUCKET_NAME}/temp'
+    f'--sdk_container_image={REGION}-docker.pkg.dev/{PROJECT_ID}/{REPOSITORY}/{DOCKER_NAME}',
+    f'--sdk_location=container',
+    f'--temp_location=gs://{BUCKET_NAME}/temp',
+    f'--staging_location=gs://{BUCKET_NAME}/staging',
+
 ]
 
 try:

@@ -1,6 +1,7 @@
 parquet/
 clusters/
 big-env/
+gcp-env/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -103,8 +103,8 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3,
     pipeline_options = PipelineOptions(
         pipeline_args, 
         streaming=True, 
-        save_main_session=True,
-        requirements_file='requirements.txt')
+        save_main_session=True)
+        # requirements_file='requirements.txt')
     
     process_pubsub = ProcessPubsubMessage()
 
