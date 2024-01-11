@@ -1,0 +1,12 @@
+# Use an existing Apache Beam Python SDK image tag
+FROM python:3.10-slim as base
+
+RUN pip install --no-cache-dir \
+    apache-beam[gcp] \
+    cassandra-driver
+    
+
+FROM apache/beam_python3.10_sdk:2.51.0
+
+# Install Cassandra driver
+# Add your additional configuration here
