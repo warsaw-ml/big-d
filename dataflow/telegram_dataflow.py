@@ -10,10 +10,16 @@ import apache_beam as beam
 from apache_beam import DoFn, GroupByKey, ParDo, Pipeline, PTransform, WindowInto, WithKeys
 from apache_beam.io import WriteToBigQuery
 from apache_beam.options.pipeline_options import PipelineOptions
+from cassandra.cluster import Cluster
+
 
 PROJECT_ID = 'bda-wut'
 TOPIC_NAME = 'telegram-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
+CASSANDRA_HOST = '34.118.38.6'  # Update with your Cassandra host IP or DNS
+CASSANDRA_KEYSPACE = 'bigd' 
+CASSANDRA_TABLE_EMBEDDINGS = 'embeddings'
+CASSANDRA_TABLE_CHATROOMS = 'chatrooms'
 BIGQUERY_DATASET = 'serving_layer'
 BIGQUERY_TABLE = 'chatrooms'
 LOCATION = 'europe-central2'
@@ -74,6 +80,33 @@ class WriteToGCS(DoFn):
             f.write(json.dumps(messages).encode())
 
 
+class WriteToCassandra(DoFn):
+    def process(self, element):
+        cluster = Cluster([CASSANDRA_HOST])
+        session = cluster.connect(CASSANDRA_KEYSPACE)
+
+
+        message_id = element['message_id']
+        text = element['text']
+        username = element['username']
+        first_name = element['first_name']
+        last_name = element['last_name']
+        user_id = element['user_id']
+        is_bot = element['is_bot']
+        channel_name = element['channel_name']
+        channel_id = element['channel_id']
+        timestamp = element['timestamp']
+        embedding = element['embedding']
+
+        # Insert data into Cassandra table
+        session.execute(
+            f"INSERT INTO {CASSANDRA_TABLE_EMBEDDINGS} (message_id, embedding) VALUES ('{message_id}', {embedding})"
+        )
+
+        session.execute(
+            f"INSERT INTO {CASSANDRA_TABLE_CHATROOMS} (message_id, text, username, first_name, last_name, user_id, is_bot, channel_name, channel_id, timestamp) VALUES ('{message_id}', '{text}', '{username}', '{first_name}', '{last_name}', '{user_id}', {is_bot}, '{channel_name}', '{channel_id}', '{timestamp}')"
+        )
+        cluster.shutdown()
 
 class ProcessPubsubMessage(DoFn):
     
@@ -164,6 +197,10 @@ def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3,
             )
         )
 
+        cassandra_output = (
+            messages
+            | "Write to Cassandra" >> ParDo(WriteToCassandra())
+        )
 
 if __name__ == "__main__":
 
