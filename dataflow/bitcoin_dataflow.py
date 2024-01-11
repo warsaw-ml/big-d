@@ -84,8 +84,7 @@ class WriteToCassandra(DoFn):
 
         # Insert data into Cassandra table
         session.execute(
-            f"INSERT INTO {CASSANDRA_TABLE} (symbol, price, timestamp) VALUES (:symbol, :price, :timestamp)",
-            {'symbol': str(element['symbol']), 'price': float(element['price']), 'timestamp': datetime.fromisoformat(element['timestamp'])}
+            f"INSERT INTO {CASSANDRA_TABLE} (symbol, price, timestamp) VALUES ('{element['symbol']}', {float(element['price'])}, '{element['timestamp']}')",
         )
 
         cluster.shutdown()
