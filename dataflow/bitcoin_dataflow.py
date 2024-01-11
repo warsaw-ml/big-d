@@ -16,7 +16,7 @@ TOPIC_NAME = 'bitcoin-topic'
 TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
 CASSANDRA_HOST = '34.118.38.6'  # Update with your Cassandra host IP or DNS
 CASSANDRA_KEYSPACE = 'bigd'  # Update with your Cassandra keyspace
-CASSANDRA_TABLE = 'bitcoin'
+CASSANDRA_TABLE = 'crypto'
 MESSAGE_FIELDS = ['symbol', 'price', 'timestamp']
 BIGQUERY_DATASET = 'serving_layer'
 
@@ -84,8 +84,8 @@ class WriteToCassandra(DoFn):
 
         # Insert data into Cassandra table
         session.execute(
-            f"INSERT INTO {CASSANDRA_TABLE} (symbol, price, timestamp) VALUES (?, ?, ?)",
-            (str(element['symbol']), float(element['price']), datetime.fromisoformat(element['timestamp']))
+            f"INSERT INTO {CASSANDRA_TABLE} (symbol, price, timestamp) VALUES (:symbol, :price, :timestamp)",
+            {'symbol': str(element['symbol']), 'price': float(element['price']), 'timestamp': datetime.fromisoformat(element['timestamp'])}
         )
 
         cluster.shutdown()
