@@ -25,6 +25,12 @@ PREFIX = "json/centroid_clustering.json"
 EMBEDDING_MODEL = "textembedding-gecko@001"
 
 
+# python dataflow/telegram_dataflow_v2.py \  --runner DataflowRunner \
+#   --project bda-wut \
+#   --region europe-central2-c \
+#   --temp_location gs://bda-wut-project-cloud-utils/dataflow
+
+
 class GenerateEmbedding(DoFn):
     def start_bundle(self):
         self.model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL)
@@ -76,9 +82,21 @@ class WriteToCassandra(DoFn):
         cluster = Cluster([CASSANDRA_HOST])
         session = cluster.connect(CASSANDRA_KEYSPACE)
 
+        message_id = element["message_id"]
+        text = element["text"]
+        username = element["username"]
+        first_name = element["first_name"]
+        last_name = element["last_name"]
+        user_id = element["user_id"]
+        is_bot = element["is_bot"]
+        channel_name = element["channel_name"]
+        channel_id = element["channel_id"]
+        timestamp = element["timestamp"]
+        embedding = element["embedding"]
+        cluster = element["cluster"]
+
         session.execute(
-            f"INSERT INTO {CASSANDRA_TABLE} (message_id, data) VALUES (%s, %s)",
-            (element["message_id"], json.dumps(element)),
+            f"INSERT INTO {CASSANDRA_TABLE} (message_id, text, username, first_name, last_name, user_id, is_bot, channel_name, channel_id, timestamp, embedding, cluster) VALUES ('{message_id}', '{text}', '{username}', '{first_name}', '{last_name}', '{user_id}', {is_bot}, '{channel_name}', '{channel_id}', '{timestamp}', '{embedding}', '{cluster}')"
         )
         cluster.shutdown()
 
