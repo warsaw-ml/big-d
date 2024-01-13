@@ -11,10 +11,13 @@ from telethon import events, functions
 from telethon.sync import TelegramClient
 
 # Setup GC Pub/Sub client
-PROJECT_ID = "big-d-project-404815"
+PROJECT_ID = "bda-wut"
 TOPIC_NAME = "telegram-topic"
+
 topic_path = f"projects/{PROJECT_ID}/topics/{TOPIC_NAME}"
-credentials = service_account.Credentials.from_service_account_file("data/big-d-project-404815-44996acd710d.json")
+credentials = service_account.Credentials.from_service_account_file(
+    "data/bda-wut-82fcf814c117.json"
+)
 publisher = pubsub_v1.PublisherClient(credentials=credentials)
 
 # Setup Telegram client

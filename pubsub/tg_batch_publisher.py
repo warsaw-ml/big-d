@@ -15,11 +15,13 @@ from telethon.sync import TelegramClient
 from tqdm import tqdm
 
 # GC project variables
-PROJECT_ID = "big-d-project-404815"
-bucket_name = "big-d-project-master-dataset"
+PROJECT_ID = "bda-wut"
+bucket_name = "bda-wut-project-master-dataset"
 
 # Load credentials
-credentials = service_account.Credentials.from_service_account_file("data/big-d-project-404815-44996acd710d.json")
+credentials = service_account.Credentials.from_service_account_file(
+    "data/bda-wut-82fcf814c117.json"
+)
 
 # Initialize Google Cloud Storage client
 client = storage.Client(credentials=credentials, project=PROJECT_ID)
