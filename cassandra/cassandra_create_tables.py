@@ -1,12 +1,12 @@
 from cassandra.cluster import Cluster
 
 # Replace these values with your Cassandra cluster information
-cluster = Cluster(['34.118.38.6'])
-session = cluster.connect('bigd')
+cluster = Cluster(["34.118.38.6"])
+session = cluster.connect("bigd")
 
 # Define CQL queries to create tables
 chatrooms_cql = """
-CREATE TABLE IF NOT EXISTS chatrooms (
+CREATE TABLE IF NOT EXISTS chatrooms_stream (
     message_id TEXT PRIMARY KEY,
     text TEXT,
     username TEXT,
@@ -16,37 +16,31 @@ CREATE TABLE IF NOT EXISTS chatrooms (
     is_bot BOOLEAN,
     channel_name TEXT,
     channel_id TEXT,
-    timestamp TIMESTAMP
+    timestamp TIMESTAMP,
+    embedding LIST<FLOAT>,
+    cluster INT,
 );
 """
 
-embeddings_cql = """
-CREATE TABLE IF NOT EXISTS embeddings (
-    message_id TEXT PRIMARY KEY,
-    embedding LIST<FLOAT>
-);
-"""
+# crypto_cql = """
+# CREATE TABLE IF NOT EXISTS crypto (
+#     symbol TEXT PRIMARY KEY,
+#     price DOUBLE,
+#     timestamp TIMESTAMP
+# );
+# """
 
-crypto_cql = """
-CREATE TABLE IF NOT EXISTS crypto (
-    symbol TEXT PRIMARY KEY,
-    price DOUBLE,
-    timestamp TIMESTAMP
-);
-"""
+# chatrooms_crypto_merged_cql = """
+# CREATE TABLE IF NOT EXISTS chatrooms_crypto_merged (
+# ...
+# );
+# """
 
-cluster_cql = """
-CREATE TABLE IF NOT EXISTS clusters (
-    message_id TEXT PRIMARY KEY,
-    cluster INT
-);
-"""
 
 # Execute CQL queries to create tables
 session.execute(chatrooms_cql)
-session.execute(embeddings_cql)
-session.execute(crypto_cql)
-session.execute(cluster_cql)
+# session.execute(crypto_cql)
+# session.execute(chatrooms_crypto_merged_cql)
 
 # Close the Cassandra session and cluster connection
 session.shutdown()

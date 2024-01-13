@@ -10,27 +10,24 @@ import umap.umap_ as umap
 
 from cassandra.cluster import Cluster
 
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "data/big-d-project-404815-44996acd710d.json"
+# def get_data_mock():
+#     path = "data/telegram"
 
+#     data = []
+#     for root, dirs, files in os.walk(path):
+#         for file in files:
+#             if file.endswith(".json"):
+#                 file_path = os.path.join(root, file)
+#                 with open(file_path, "r") as f:
+#                     json_data = json.load(f)
+#                     data.append(json_data)
 
-def get_data_mock():
-    path = "data/telegram"
+#     df = pd.concat([pd.DataFrame(d) for d in data], ignore_index=True)
 
-    data = []
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.endswith(".json"):
-                file_path = os.path.join(root, file)
-                with open(file_path, "r") as f:
-                    json_data = json.load(f)
-                    data.append(json_data)
+#     # replace Nan with string "None"
+#     df = df.fillna("None")
 
-    df = pd.concat([pd.DataFrame(d) for d in data], ignore_index=True)
-
-    # replace Nan with string "None"
-    df = df.fillna("None")
-
-    return df
+#     return df
 
 
 def convert_to_df(rows):
@@ -44,56 +41,36 @@ def convert_to_df(rows):
 
 
 def get_data_cassandra():
-    cassandra_cluster = Cluster(["34.118.53.49"])
-    session = cassandra_cluster.connect("cassandra1")
+    cassandra_cluster = Cluster(["34.118.38.6"])
+    session = cassandra_cluster.connect("bigd")
 
     # Execute a query to retrieve data from the table
     # query = "SELECT * FROM crypto;"
     # rows_btc = session.execute(query)
 
-    query = "SELECT * FROM clusters;"
-    rows_clusters = session.execute(query)
-
-    # query = "SELECT * FROM chatrooms;"
-    # rows_messages = session.execute(query)
-
-    # query = "SELECT * FROM embeddings;"
-    # rows_embeddings = session.execute(query)
-
-    # df_btc = convert_to_df(rows_btc)
-    df_clusters = convert_to_df(rows_clusters)
-    # df_messages = convert_to_df(rows_messages)
-    # df_embeddings = convert_to_df(rows_embeddings)
-
-    # print(df_messages.shape)
-    print(df_clusters.shape)
+    query = "SELECT * FROM chatrooms_stream;"
+    rows = session.execute(query)
+    df = convert_to_df(rows)
 
     cassandra_cluster.shutdown()
 
-    # print(df_embeddings)
-
-    # inner join if messages and clusters by meessage_id
-    # df_messages = df_messages.merge(df_clusters, on="message_id", how="inner")
-    # df_messages = df_messages.merge(df_embeddings, on="message_id", how="inner")
-
-    return df_clusters
+    return df
 
 
 # Pull data from Cassandra
-df_messages = get_data_mock()
-df_clusters = get_data_cassandra()
+df = get_data_cassandra()
+print(df)
 
-print(df_messages.shape)
-print(df_clusters.shape)
-df = df_messages.merge(df_clusters, on="message_id", how="inner")
-print(df.shape)
+exit()
 
 
 embeddings = df.embedding.tolist()
 texts = df.text.tolist()
 users = df.username.tolist()
 channel_names = df.channel_name.tolist()
-umap_embeddings = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2).fit_transform(embeddings)
+umap_embeddings = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2).fit_transform(
+    embeddings
+)
 df_embeddings_umap = pd.DataFrame(umap_embeddings, columns=["x", "y"])
 
 # generate list of random cluster numbers for each datapoints
@@ -143,7 +120,9 @@ def get_tickers(df):
 
     # Step 2: Normalize and Pair Tickers with Channel IDs
     # Normalize tickers to upper case and pair them with channel_id
-    pairs = df.apply(lambda x: [(ticker.upper(), x["channel_id"]) for ticker in x["tickers"]], axis=1)
+    pairs = df.apply(
+        lambda x: [(ticker.upper(), x["channel_id"]) for ticker in x["tickers"]], axis=1
+    )
 
     # Flatten the list of pairs
     flat_pairs = [item for sublist in pairs for item in sublist]
@@ -169,7 +148,9 @@ def get_tickers(df):
     )
 
     # Sort the ticker_summary_df by total_mentions
-    sorted_ticker_summary = ticker_summary_df.sort_values(by="total_mentions", ascending=False)
+    sorted_ticker_summary = ticker_summary_df.sort_values(
+        by="total_mentions", ascending=False
+    )
     result = sorted_ticker_summary.head(20).reset_index(drop=True)
 
     return result
