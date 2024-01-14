@@ -17,10 +17,15 @@ CREATE TABLE IF NOT EXISTS chatrooms_stream (
     channel_name TEXT,
     channel_id TEXT,
     timestamp TIMESTAMP,
-    embedding LIST<FLOAT>,
-    cluster INT,
+    embedding TEXT,
+    cluster TEXT,
 );
 """
+
+# remove table
+# chatrooms_cql = """
+# DROP TABLE chatrooms_stream
+# """
 
 # crypto_cql = """
 # CREATE TABLE IF NOT EXISTS crypto (

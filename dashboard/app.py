@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import random
@@ -10,35 +11,6 @@ import umap.umap_ as umap
 
 from cassandra.cluster import Cluster
 
-# def get_data_mock():
-#     path = "data/telegram"
-
-#     data = []
-#     for root, dirs, files in os.walk(path):
-#         for file in files:
-#             if file.endswith(".json"):
-#                 file_path = os.path.join(root, file)
-#                 with open(file_path, "r") as f:
-#                     json_data = json.load(f)
-#                     data.append(json_data)
-
-#     df = pd.concat([pd.DataFrame(d) for d in data], ignore_index=True)
-
-#     # replace Nan with string "None"
-#     df = df.fillna("None")
-
-#     return df
-
-
-def convert_to_df(rows):
-    data = []
-    for row in rows:
-        data.append(row)
-
-    df = pd.DataFrame(data)
-
-    return df
-
 
 def get_data_cassandra():
     cassandra_cluster = Cluster(["34.118.38.6"])
@@ -50,32 +22,33 @@ def get_data_cassandra():
 
     query = "SELECT * FROM chatrooms_stream;"
     rows = session.execute(query)
-    df = convert_to_df(rows)
-
     cassandra_cluster.shutdown()
+
+    # convert to df
+    df = pd.DataFrame([row for row in rows])
+
+    # convert column embedding (string) to column of float lists
+    df["embedding"] = df["embedding"].apply(ast.literal_eval)
+    df["cluster"] = df["cluster"].apply(ast.literal_eval)
+
+    print(df)
 
     return df
 
 
 # Pull data from Cassandra
 df = get_data_cassandra()
-print(df)
-
-exit()
-
 
 embeddings = df.embedding.tolist()
 texts = df.text.tolist()
 users = df.username.tolist()
 channel_names = df.channel_name.tolist()
+cluster_numbers = df.cluster.tolist()
+
 umap_embeddings = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2).fit_transform(
     embeddings
 )
 df_embeddings_umap = pd.DataFrame(umap_embeddings, columns=["x", "y"])
-
-# generate list of random cluster numbers for each datapoints
-# cluster_number = [random.randint(1, 10) for _ in range(len(df_embeddings_umap))]
-cluster_number = df["cluster"].tolist()
 
 # Set layout
 st.set_page_config(layout="wide")
@@ -87,7 +60,7 @@ st.title("Dashboard")
 st.subheader("Telegram messages latent space")
 
 # Create an interactive scatter plot using Plotly
-fig = px.scatter(df_embeddings_umap, x="x", y="y", color=cluster_number)
+fig = px.scatter(df_embeddings_umap, x="x", y="y", color=cluster_numbers)
 
 # Update the hovertemplate
 fig.update_traces(
@@ -163,7 +136,7 @@ st.dataframe(ticker_df, height=738)
 
 # Optional: Display the raw data as a table
 st.subheader("Example Messages")
-df_display = df[["text", "username", "channel_name", "timestamp"]].sample(1000)
+df_display = df[["text", "username", "channel_name", "timestamp"]].sample(10)
 st.dataframe(df_display)
 
 # Display the statistics

@@ -25,9 +25,10 @@ PREFIX = "json/centroid_clustering.json"
 EMBEDDING_MODEL = "textembedding-gecko@001"
 
 
-# python dataflow/telegram_dataflow_v2.py \  --runner DataflowRunner \
+#  python dataflow/telegram_dataflow_v2.py \
+#   --runner DataflowRunner \
 #   --project bda-wut \
-#   --region europe-central2-c \
+#   --region us-central1 \
 #   --temp_location gs://bda-wut-project-cloud-utils/dataflow
 
 
@@ -73,7 +74,7 @@ class AttachClosestCentroid(DoFn):
                 closest_cluster = cluster_number
 
         # Attach the closest cluster label to the element
-        element["cluster"] = closest_cluster
+        element["cluster"] = str(closest_cluster)
         yield element
 
 
@@ -92,11 +93,11 @@ class WriteToCassandra(DoFn):
         channel_name = element["channel_name"]
         channel_id = element["channel_id"]
         timestamp = element["timestamp"]
-        embedding = element["embedding"]
-        cluster = element["cluster"]
+        embedding = str(element["embedding"])
+        cluster_number = element["cluster"]
 
         session.execute(
-            f"INSERT INTO {CASSANDRA_TABLE} (message_id, text, username, first_name, last_name, user_id, is_bot, channel_name, channel_id, timestamp, embedding, cluster) VALUES ('{message_id}', '{text}', '{username}', '{first_name}', '{last_name}', '{user_id}', {is_bot}, '{channel_name}', '{channel_id}', '{timestamp}', '{embedding}', '{cluster}')"
+            f"INSERT INTO {CASSANDRA_TABLE} (message_id, text, username, first_name, last_name, user_id, is_bot, channel_name, channel_id, timestamp, embedding, cluster) VALUES ('{message_id}', '{text}', '{username}', '{first_name}', '{last_name}', '{user_id}', {is_bot}, '{channel_name}', '{channel_id}', '{timestamp}', '{embedding}', '{cluster_number}')"
         )
         cluster.shutdown()
 
