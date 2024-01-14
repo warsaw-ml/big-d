@@ -1,32 +1,54 @@
 import argparse
 import json
 import logging
-from datetime import datetime
 import random
-import pytz
+from datetime import datetime
 
 import apache_beam as beam
-from apache_beam import DoFn, GroupByKey, ParDo, Pipeline, PTransform, WindowInto, WithKeys
+import pytz
+from apache_beam import (
+    DoFn,
+    GroupByKey,
+    ParDo,
+    Pipeline,
+    PTransform,
+    WindowInto,
+    WithKeys,
+)
 from apache_beam.io import WriteToBigQuery
 from apache_beam.options.pipeline_options import PipelineOptions
+
 from cassandra.cluster import Cluster
 
-PROJECT_ID = 'bda-wut'
-TOPIC_NAME = 'bitcoin-topic'
-TOPIC = f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
-CASSANDRA_HOST = '34.118.38.6'  # Update with your Cassandra host IP or DNS
-CASSANDRA_KEYSPACE = 'bigd'  # Update with your Cassandra keyspace
-CASSANDRA_TABLE = 'crypto'
-MESSAGE_FIELDS = ['symbol', 'price', 'timestamp']
-BIGQUERY_DATASET = 'serving_layer'
+PROJECT_ID = "bda-wut"
+TOPIC_NAME = "bitcoin-topic"
+TOPIC = f"projects/{PROJECT_ID}/topics/{TOPIC_NAME}"
+CASSANDRA_HOST = "34.118.38.6"  # Update with your Cassandra host IP or DNS
+CASSANDRA_KEYSPACE = "bigd"  # Update with your Cassandra keyspace
+CASSANDRA_TABLE = "crypto3"
+MESSAGE_FIELDS = ["symbol", "price", "timestamp"]
+BIGQUERY_DATASET = "serving_layer"
+
+
+# beamapp-jan20-0111153239-293812-u5se01qv
+
+
+# python dataflow/bitcoin_dataflow.py \
+# --runner DataflowRunner \
+# --project bda-wut \
+# --region us-central1 \
+# --temp_location gs://bda-wut-project-cloud-utils/dataflow
 
 
 def get_bigquery_schema(schema_path):
-    with open(schema_path, 'r') as schema_file:
+    with open(schema_path, "r") as schema_file:
         schema_list = json.load(schema_file)
-    return ','.join(f"{field['name']}:{field['type']}" for field in schema_list["schema"]['fields'])
+    return ",".join(
+        f"{field['name']}:{field['type']}" for field in schema_list["schema"]["fields"]
+    )
 
-schema = get_bigquery_schema('schemas/bitcoin_schema.json')
+
+schema = get_bigquery_schema("dataflow/schemas/bitcoin_schema.json")
 
 
 class GroupMessagesByFixedWindows(PTransform):
@@ -37,18 +59,23 @@ class GroupMessagesByFixedWindows(PTransform):
     def expand(self, pcoll):
         return (
             pcoll
-            | "Window into fixed intervals" >> WindowInto(beam.transforms.window.FixedWindows(self.window_size))
+            | "Window into fixed intervals"
+            >> WindowInto(beam.transforms.window.FixedWindows(self.window_size))
             | "Add timestamp to windowed elements" >> ParDo(AddTimestamp())
             | "Add key" >> WithKeys(lambda _: random.randint(0, self.num_shards - 1))
             | "Group by key" >> GroupByKey()
         )
 
+
 class AddTimestamp(DoFn):
     def process(self, element, publish_time=DoFn.TimestampParam):
         yield (
             element,
-            datetime.utcfromtimestamp(float(publish_time)).strftime("%Y-%m-%d %H:%M:%S.%f"),
+            datetime.utcfromtimestamp(float(publish_time)).strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            ),
         )
+
 
 class WriteToGCS(DoFn):
     def __init__(self, output_path):
@@ -74,73 +101,78 @@ class WriteToGCS(DoFn):
             # Write JSON containing the list of messages
             f.write(json.dumps(messages).encode())
 
+
 class WriteToCassandra(DoFn):
     def process(self, element):
         cluster = Cluster([CASSANDRA_HOST])
         session = cluster.connect(CASSANDRA_KEYSPACE)
 
         # Convert timestamp to a format suitable for Cassandra
-        element['timestamp'] = datetime.fromisoformat(element['timestamp']).strftime("%Y-%m-%d %H:%M:%S")
+        element["timestamp"] = datetime.fromisoformat(element["timestamp"]).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         # Insert data into Cassandra table
         session.execute(
-            f"INSERT INTO {CASSANDRA_TABLE} (symbol, price, timestamp) VALUES ('{element['symbol']}', {float(element['price'])}, '{element['timestamp']}')",
+            f"INSERT INTO {CASSANDRA_TABLE} (idx, symbol, price, timestamp) VALUES (uuid(), '{str(element['symbol'])}', {float(element['price'])}, '{element['timestamp']}')",
         )
 
         cluster.shutdown()
 
-class ProcessPubsubMessage(DoFn):
 
+class ProcessPubsubMessage(DoFn):
     def process(self, element):
         data = json.loads(element)
-        data['timestamp'] = datetime.now(pytz.utc).isoformat()
+        data["timestamp"] = datetime.now(pytz.utc).isoformat()
         yield data
 
 
-def run(input_topic, output_path, bigquery_table, window_size=1.0, num_shards=3, pipeline_args=None):
-    
+def run(
+    input_topic,
+    output_path,
+    bigquery_table,
+    window_size=1.0,
+    num_shards=3,
+    pipeline_args=None,
+):
     pipeline_options = PipelineOptions(
-        pipeline_args, 
-        streaming=True, 
-        save_main_session=True)
-        # requirements_file='requirements.txt')
-    
+        pipeline_args,
+        streaming=True,
+        save_main_session=True,
+        requirements_file="requirements.txt",
+    )
+
     process_pubsub = ProcessPubsubMessage()
 
     with Pipeline(options=pipeline_options) as pipeline:
-
         messages = (
             pipeline
             | "Read from PubSub" >> beam.io.ReadFromPubSub(topic=input_topic)
             | "Decode PubSub message" >> beam.Map(lambda x: x.decode("utf-8"))
             | "Process message" >> beam.ParDo(process_pubsub)
-            | "Filter out invalid message" >> beam.Filter(lambda x: all(field in x for field in MESSAGE_FIELDS) and x is not None)
-        )
-    
-        gcs_output = (
-                    messages
-                    | "Batch messages" >> GroupMessagesByFixedWindows(window_size, num_shards)
-                    | "Write to GCS" >> ParDo(WriteToGCS(output_path))
-        )
-
-        bq_output = (
-            messages
-            | "Write to BigQuery" >> WriteToBigQuery(
-                f'{PROJECT_ID}:{BIGQUERY_DATASET}.{bigquery_table}',
-                schema=schema,
-                create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
-                write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND
+            | "Filter out invalid message"
+            >> beam.Filter(
+                lambda x: all(field in x for field in MESSAGE_FIELDS) and x is not None
             )
-        
         )
 
-        cassandra_output = (
+        gcs_output = (
             messages
-            | "Write to Cassandra" >> ParDo(WriteToCassandra())
+            | "Batch messages" >> GroupMessagesByFixedWindows(window_size, num_shards)
+            | "Write to GCS" >> ParDo(WriteToGCS(output_path))
         )
+
+        bq_output = messages | "Write to BigQuery" >> WriteToBigQuery(
+            f"{PROJECT_ID}:{BIGQUERY_DATASET}.{bigquery_table}",
+            schema=schema,
+            create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
+            write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
+        )
+
+        cassandra_output = messages | "Write to Cassandra" >> ParDo(WriteToCassandra())
+
 
 if __name__ == "__main__":
-
     logging.getLogger().setLevel(logging.INFO)
 
     parser = argparse.ArgumentParser()

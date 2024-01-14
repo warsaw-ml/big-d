@@ -1,7 +1,4 @@
 import ast
-import json
-import os
-import random
 import re
 
 import pandas as pd
@@ -16,34 +13,40 @@ def get_data_cassandra():
     cassandra_cluster = Cluster(["34.118.38.6"])
     session = cassandra_cluster.connect("bigd")
 
-    # Execute a query to retrieve data from the table
-    # query = "SELECT * FROM crypto;"
-    # rows_btc = session.execute(query)
+    # Execute a query to retrieve btc data from cassandra
+    query = "SELECT * FROM crypto3;"
+    rows = session.execute(query)
+    df_btc = pd.DataFrame([row for row in rows])
+    # drop row with symbol "jdkslajkd"
+    df_btc = df_btc[df_btc["symbol"] != "jdkslajkd"]
 
+    # sort by timestamp
+    df_btc = df_btc.sort_values(by="timestamp")
+    print(df_btc.head(60))
+
+    # Execute a query to retrieve telegram data from cassandra
     query = "SELECT * FROM chatrooms_stream;"
     rows = session.execute(query)
     cassandra_cluster.shutdown()
 
     # convert to df
-    df = pd.DataFrame([row for row in rows])
+    df_tg = pd.DataFrame([row for row in rows])
 
     # convert column embedding (string) to column of float lists
-    df["embedding"] = df["embedding"].apply(ast.literal_eval)
-    df["cluster"] = df["cluster"].apply(ast.literal_eval)
+    df_tg["embedding"] = df_tg["embedding"].apply(ast.literal_eval)
+    df_tg["cluster"] = df_tg["cluster"].apply(ast.literal_eval)
 
-    print(df)
-
-    return df
+    return df_tg, df_btc
 
 
 # Pull data from Cassandra
-df = get_data_cassandra()
+df_tg, df_btc = get_data_cassandra()
 
-embeddings = df.embedding.tolist()
-texts = df.text.tolist()
-users = df.username.tolist()
-channel_names = df.channel_name.tolist()
-cluster_numbers = df.cluster.tolist()
+embeddings = df_tg.embedding.tolist()
+texts = df_tg.text.tolist()
+users = df_tg.username.tolist()
+channel_names = df_tg.channel_name.tolist()
+cluster_numbers = df_tg.cluster.tolist()
 
 umap_embeddings = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2).fit_transform(
     embeddings
@@ -84,6 +87,11 @@ fig.update_yaxes(range=[-10, 15])
 
 # Plot
 st.plotly_chart(fig)
+
+# Show btc chart
+fig2 = px.line(df_btc, x="timestamp", y="price", title="BTC Price Chart")
+fig2.update_layout(autosize=True, hovermode="closest", dragmode="pan")
+st.plotly_chart(fig2)
 
 
 def get_tickers(df):
@@ -131,20 +139,20 @@ def get_tickers(df):
 
 # Display the top tickers
 st.subheader("Top 20 Tickers Mentioned")
-ticker_df = get_tickers(df)
+ticker_df = get_tickers(df_tg)
 st.dataframe(ticker_df, height=738)
 
 # Optional: Display the raw data as a table
 st.subheader("Example Messages")
-df_display = df[["text", "username", "channel_name", "timestamp"]].sample(10)
+df_display = df_tg[["text", "username", "channel_name", "timestamp"]].sample(10)
 st.dataframe(df_display)
 
 # Display the statistics
 st.subheader("Total Number of Messages in the Last Week")
-st.write(df.shape[0])
+st.write(df_tg.shape[0])
 
 st.subheader("Number of Messages per Hour")
-st.write(df.shape[0] / 168)
+st.write(df_tg.shape[0] / 168)
 
 # # extract hour and add as new field to df
 # df["hour"] = df["timestamp"].dt.hour
