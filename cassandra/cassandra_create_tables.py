@@ -6,7 +6,7 @@ session = cluster.connect("bigd")
 
 # Define CQL queries to create tables
 chatrooms_cql = """
-CREATE TABLE IF NOT EXISTS chatrooms_stream (
+CREATE TABLE IF NOT EXISTS chatrooms (
     message_id TEXT PRIMARY KEY,
     text TEXT,
     username TEXT,
@@ -17,35 +17,37 @@ CREATE TABLE IF NOT EXISTS chatrooms_stream (
     channel_name TEXT,
     channel_id TEXT,
     timestamp TIMESTAMP,
-    embedding TEXT,
-    cluster TEXT,
 );
 """
 
-# remove table
-# chatrooms_cql = """
-# DROP TABLE chatrooms_stream
-# """
+embeddings_cql = """
+CREATE TABLE IF NOT EXISTS embeddings (
+    message_id TEXT PRIMARY KEY,
+    embedding LIST<FLOAT>
+);
+"""
 
-# crypto_cql = """
-# CREATE TABLE IF NOT EXISTS crypto (
-#     symbol TEXT PRIMARY KEY,
-#     price DOUBLE,
-#     timestamp TIMESTAMP
-# );
-# """
+crypto_cql = """
+CREATE TABLE IF NOT EXISTS crypto (
+    symbol TEXT PRIMARY KEY,
+    price DOUBLE,
+    timestamp TIMESTAMP
+);
+"""
 
-# chatrooms_crypto_merged_cql = """
-# CREATE TABLE IF NOT EXISTS chatrooms_crypto_merged (
-# ...
-# );
-# """
+clusters_cql = """
+CREATE TABLE IF NOT EXISTS clusters (
+    cluster_id INT PRIMARY KEY,
+    clluster INT
+);
+"""
 
 
 # Execute CQL queries to create tables
 session.execute(chatrooms_cql)
-# session.execute(crypto_cql)
-# session.execute(chatrooms_crypto_merged_cql)
+session.execute(embeddings_cql)
+session.execute(crypto_cql)
+session.execute(clusters_cql)
 
 # Close the Cassandra session and cluster connection
 session.shutdown()
