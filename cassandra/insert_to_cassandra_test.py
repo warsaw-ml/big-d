@@ -31,26 +31,20 @@ session.execute(insert_statement)
 session.shutdown()
 
 
-# from cassandra.cluster import Cluster
-# from cassandra.query import SimpleStatement
-# from cassandra import ConsistencyLevel
-
-# # Connect to Cassandra
-# cassandra_cluster = Cluster(['34.118.38.6'])
 
 # # Nazwa tabeli
-# table_name = 'embeddings'
-# message_id = "123"
-# embedding = [1.0, 2.0, 3.0]
+table_name = 'embeddings'
+message_id = "123"
+embedding = [1.0, 2.0, 3.0]
 
-# # Prepare the INSERT statement
-# insert_statement = SimpleStatement(
-#     f"INSERT INTO {table_name} (message_id, embedding) VALUES ('{message_id}', {embedding})",
-#     consistency_level=ConsistencyLevel.ONE
-# )
-# session = cassandra_cluster.connect('bigd')
+# Prepare the INSERT statement
+insert_statement = SimpleStatement(
+    f"INSERT INTO {table_name} (message_id, embedding) VALUES ('{message_id}', {embedding})",
+    consistency_level=ConsistencyLevel.ONE
+)
+session = cassandra_cluster.connect('bigd')
 
-# session.execute(insert_statement)
+session.execute(insert_statement)
 
-# # Close the Cassandra session and cluster connection
-# session.shutdown()
+# Close the Cassandra session and cluster connection
+session.shutdown()
