@@ -7,3 +7,7 @@
     - `notebooks` (for exploratory data analysis of telegram and cryptocurrency data sets)
     - `data` and `scraper` (for scraping data from Telegram)
     - `tests` (for unit tests on MS2)
+  
+# Architecture diagram
+
+![Lambda architecture](architecture_diagram.png)
